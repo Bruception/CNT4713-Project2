@@ -1,4 +1,14 @@
 import socket
+import struct
+
+replyCodeMap = {
+    0 : 'No error',
+    1 : 'Format error',
+    2 : 'Server failure',
+    3 : 'Name Error',
+    4 : 'Not Implemented',
+    5 : 'Refused',
+}
 
 def getHeader():
     return b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
@@ -13,21 +23,33 @@ def getQueryMessage(domain):
     questionSectionBytes.extend(b'\x00\x00\x01\x00\x01')
     return bytes(questionSectionBytes)
 
-def parseResponseMessage(bytes):
-    pass
+    #   1  2  3  4  5  6  7  8  1  2  3  4  5  6  7  8
+    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    # |                      ID                       |
+    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    # |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    # |                    QDCOUNT                    |
+    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    # |                    ANCOUNT                    |
+    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    # |                    NSCOUNT                    |
+    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    # |                    ARCOUNT                    |
+    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 
-# c0.nic.me
-# a.root-servers.net
-# bruceberrios.me: type NS, class IN, ns dns1.registrar-servers.com
-
-# edu: type NS, class IN, ns a.edu-servers.net
-# nameserver2.fiu.edu
-# goedel.cs.fiu.edu
+def parseResponseMessage(response):
+    data = bytearray(response)
+    replyCode = data[3] & 0x0F
+    questionCount = (data[4] << 8) + data[5];
+    answerCount = (data[6] << 8) + data[7];
+    nameServerCount = (data[8] << 8) + data[9];
+    additionalCount = (data[10] << 8) + data[11];
 
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-udp.connect(('ns2.google.com', 53))
-udp.sendall(getQueryMessage('google.com'))
+udp.connect(('a.root-servers.net', 53))
+udp.sendall(getQueryMessage('cs.fiu.edu'))
 data = udp.recv(8192)
 udp.close()
 
-print(data)
+parseResponseMessage(data)
