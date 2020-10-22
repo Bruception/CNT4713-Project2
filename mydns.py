@@ -1,7 +1,7 @@
 import socket
 import struct
 
-replyCodeMap = {
+responseCodeMap = {
     0 : 'No error',
     1 : 'Format error',
     2 : 'Server failure',
@@ -9,6 +9,45 @@ replyCodeMap = {
     4 : 'Not Implemented',
     5 : 'Refused',
 }
+
+#   1  2  3  4  5  6  7  8  1  2  3  4  5  6  7  8
+# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+# |                      ID                       |
+# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+# |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+# |                    QDCOUNT                    |
+# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+# |                    ANCOUNT                    |
+# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+# |                    NSCOUNT                    |
+# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+# |                    ARCOUNT                    |
+# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+def getUShort(data, byte1, byte2):
+    return (data[byte1] << 8) + data[byte2]
+
+responseHeaderMap = {
+    'transactionID'     : lambda data : getUShort(data, 0, 1),
+    'queryResponse'     : lambda data : (data[2] & 0x80) >> 7,
+    'responseCode'      : lambda data : data[3] & 0x0F,
+    'questions'         : lambda data : getUShort(data, 4, 5),
+    'answers'           : lambda data : getUShort(data, 6, 7),
+    'nameServers'       : lambda data : getUShort(data, 8, 9),
+    'additionalRecords' : lambda data : getUShort(data, 10, 11),
+}
+
+class DNSHeader:
+    def __init__(self, data):
+        for field in responseHeaderMap:
+            setattr(self, field, responseHeaderMap[field](data))
+
+    def __str__(self):
+        buffer = []
+        for attr in vars(self):
+            buffer.append(''.join(['\t', attr, ': ', str(getattr(self, attr))]))
+        return '\n'.join(buffer)
 
 def getHeader():
     return b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
@@ -23,28 +62,10 @@ def getQueryMessage(domain):
     questionSectionBytes.extend(b'\x00\x00\x01\x00\x01')
     return bytes(questionSectionBytes)
 
-    #   1  2  3  4  5  6  7  8  1  2  3  4  5  6  7  8
-    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    # |                      ID                       |
-    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    # |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
-    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    # |                    QDCOUNT                    |
-    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    # |                    ANCOUNT                    |
-    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    # |                    NSCOUNT                    |
-    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-    # |                    ARCOUNT                    |
-    # +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-
-def parseResponseMessage(response):
+def parseResponseHeader(response) -> DNSHeader:
     data = bytearray(response)
-    replyCode = data[3] & 0x0F
-    questionCount = (data[4] << 8) + data[5];
-    answerCount = (data[6] << 8) + data[7];
-    nameServerCount = (data[8] << 8) + data[9];
-    additionalCount = (data[10] << 8) + data[11];
+    dnsHeader = DNSHeader(data)
+    return dnsHeader
 
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp.connect(('a.root-servers.net', 53))
@@ -52,4 +73,4 @@ udp.sendall(getQueryMessage('cs.fiu.edu'))
 data = udp.recv(8192)
 udp.close()
 
-parseResponseMessage(data)
+print(parseResponseHeader(data))
