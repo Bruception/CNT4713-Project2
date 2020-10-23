@@ -1,6 +1,7 @@
 from typing import Tuple, List
 
 QUERY_HEADER = b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
+MAX_MESSAGE_SIZE = 512
 
 class DNSHeader:
     def __init__(self, data):
@@ -109,10 +110,10 @@ def parseName(data, byte) -> Tuple[str, int]:
 def parseIP(data, byte) -> str:
     return '.'.join([str(data[byte + b]) for b in range(0, 4)])
 
-def recordIsAuthoritative(recordData) -> bool:
+def recordIsAdditional(recordData) -> bool:
     return recordData['rtype'] == 1 and recordData['rclass'] == 1
 
-def recordIsAdditional(recordData) -> bool:
+def recordIsAuthoritative(recordData) -> bool:
     return recordData['rtype'] == 2 and recordData['rclass'] == 1
 
 # Return list of resource records
@@ -132,9 +133,9 @@ def parseResourceRecords(data, startByte, numRecords) -> Tuple[List[ResourceReco
             'rdata' : None,
         }
         currentByte += 10
-        if (recordIsAuthoritative(recordData)):
+        if (recordIsAdditional(recordData)):
             recordData['rdata'] = parseIP(data, currentByte)
-        elif (recordIsAdditional(recordData)):
+        elif (recordIsAuthoritative(recordData)):
             recordData['rdata'] = parseName(data, currentByte)[0]
         currentByte += recordData['rdlength']
         if (recordData['rdata']):
