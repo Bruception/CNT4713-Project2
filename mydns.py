@@ -1,5 +1,4 @@
 import socket
-import struct
 
 responseCodeMap = {
     0 : 'No error',
@@ -10,20 +9,17 @@ responseCodeMap = {
     5 : 'Refused',
 }
 
-#   1  2  3  4  5  6  7  8  1  2  3  4  5  6  7  8
-# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-# |                      ID                       |
-# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-# |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
-# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-# |                    QDCOUNT                    |
-# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-# |                    ANCOUNT                    |
-# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-# |                    NSCOUNT                    |
-# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-# |                    ARCOUNT                    |
-# +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+qTypeMap = {
+    1 : 'A',
+    2 : 'NS',
+}
+
+qClassMap = {
+    1 : 'IN',
+    2 : 'CS',
+    3 : 'CH',
+    4 : 'HS',
+}
 
 def getUShort(data, byte1, byte2):
     return (data[byte1] << 8) + data[byte2]
@@ -45,6 +41,7 @@ class DNSHeader:
 
     def __str__(self):
         buffer = []
+        buffer.append('DNS Header')
         for attr in vars(self):
             buffer.append(''.join(['\t', attr, ': ', str(getattr(self, attr))]))
         return '\n'.join(buffer)
@@ -52,7 +49,7 @@ class DNSHeader:
 def getHeader():
     return b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
 
-def getQueryMessage(domain):
+def getQueryMessage(domain) -> bytes:
     labels = domain.split('.')
     lengths = [len(label) for label in labels]
     questionSectionBytes = bytearray(getHeader())
@@ -67,10 +64,39 @@ def parseResponseHeader(response) -> DNSHeader:
     dnsHeader = DNSHeader(data)
     return dnsHeader
 
+def parseQuestion(data):
+    currentByteIndex = 12
+    domainNameBuffer = []
+    while (data[currentByteIndex] != 0):
+        labelLength = data[currentByteIndex]
+        labelBuffer = []
+        for i in range(0, labelLength):
+            labelBuffer.append(chr(data[currentByteIndex + i + 1]))
+        domainNameBuffer.append(''.join(labelBuffer))
+        currentByteIndex += labelLength + 1
+    domainName = '.'.join(domainNameBuffer)
+    qType = getUShort(data, currentByteIndex + 1, currentByteIndex + 2)
+    qClass = getUShort(data, currentByteIndex + 3, currentByteIndex + 4)
+    print(domainName, qTypeMap[qType], qClassMap[qClass])
+    return currentByteIndex + 5 # Start of the Answers sections
+
+def parseAnswers(data):
+    pass
+
+def parseNameServers(data):
+    pass
+
+def parseAdditionalRecords(data):
+    pass
+
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp.connect(('a.root-servers.net', 53))
 udp.sendall(getQueryMessage('cs.fiu.edu'))
 data = udp.recv(8192)
 udp.close()
 
-print(parseResponseHeader(data))
+print(data)
+
+dnsHeader = parseResponseHeader(data)
+print(dnsHeader)
+parseQuestion(data)
