@@ -23,9 +23,9 @@ QUERY_HEADER = b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
 
 class DNSHeader:
     def __init__(self, data):
-        self.answers = getUShort(data, 6, 7)
-        self.nameServers = getUShort(data, 8, 9)
-        self.additionalRecords = getUShort(data, 10, 11)
+        self.answers = getUShort(data, 6)
+        self.nameServers = getUShort(data, 8)
+        self.additionalRecords = getUShort(data, 10)
 
     def __str__(self):
         answers = f'\t{self.answers} Answers.'
@@ -62,10 +62,13 @@ class DNSMessage:
         pass
 
     def __str__(self):
-        pass
+        return str(self.header)
 
-def getUShort(data, byte1, byte2):
-    return (data[byte1] << 8) + data[byte2]
+def getUShort(data, byte):
+    return (data[byte] << 8) + data[byte + 1]
+
+def getUInt(data, byte):
+    return (data[byte] << 32) + (data[byte + 1] << 16) + (data[byte + 2] << 8)  + data[byte + 3]
 
 def getQueryMessage(domain) -> bytes:
     labels = domain.split('.')
@@ -89,17 +92,40 @@ def skipQuestionSection(data):
         currentByteIndex += labelLength + 1
     return currentByteIndex + 5 # Start of the Answers sections
 
-# Return list of answer rrs
-def parseAnswers(data, startByte, answers):
-    return 0
+def parseName(data, byte):
+    currentByte = byte
+    nameBuffer = []
+    while (data[currentByte] != 0):
+        labelLength = data[currentByte]
+        if ((labelLength & 0xC0) == 0xC0): # This is a pointer
+            byteOffset = ((data[currentByte] & 0x3F) << 8) + data[currentByte + 1]
+            nameBuffer.append(parseName(data, byteOffset)[0])
+            currentByte += 2
+            break
+        labelBuffer = []
+        for i in range(0, labelLength):
+            labelBuffer.append(chr(data[currentByte + i + 1]))
+        nameBuffer.append(''.join(labelBuffer))
+        currentByte += labelLength + 1
+    return ('.'.join(nameBuffer), currentByte)
 
-# Return list of authority rrs
-def parseNameServers(data, startByte, nameServers):
-    return 0
-
-# Return list of additional rrs
-def parseAdditionalRecords(data, startByte, additionalRecords):
-    return 0
+# Return list of resource records
+def parseResourceRecords(data, startByte, numRecords):
+    currentByte = startByte
+    recordsParsed = 0
+    records = []
+    while (recordsParsed < numRecords):
+        info = parseName(data, currentByte)
+        recordName = info[0]
+        currentByte = info[1]
+        rtype = getUShort(data, currentByte) # 2 bytes
+        rclass = getUShort(data, currentByte + 2) # 2 bytes
+        ttl = getUInt(data, currentByte + 4) # 4 bytes
+        rdlength = getUShort(data, currentByte + 8) # 2 bytes
+        print(recordName, rtype, rclass, ttl, rdlength)
+        currentByte += rdlength + 10
+        recordsParsed += 1
+    return currentByte
 
 # Return a DNSMessage
 def parseDNSResponse(data):
@@ -110,10 +136,9 @@ def parseDNSResponse(data):
     additionalRecords = dnsMessage.header.additionalRecords
     nextByte = skipQuestionSection(data)
     if (answers > 0):
-        nextByte = parseAnswers(data, nextByte, answers)
+        nextByte = parseResourceRecords(data, nextByte, answers)
     if (nameServers > 0):
-        nextByte = parseNameServers(data, nextByte, nameServers)
+        nextByte = parseResourceRecords(data, nextByte, nameServers)
     if (additionalRecords > 0):
-        nextByte = parseAdditionalRecords(data, nextByte, additionalRecords)
+        nextByte = parseResourceRecords(data, nextByte, additionalRecords)
     return dnsMessage
-    
