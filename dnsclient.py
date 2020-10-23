@@ -1,7 +1,7 @@
 import socket
 import dnsutils
 
-SEPARATOR_COUNT = 64
+SEPARATOR = '-' * 64
 
 class DNSClient:
     def __init__(self, root, domain):
@@ -11,10 +11,15 @@ class DNSClient:
         self.resolved = False
 
     def resolve(self):
-        self.udp.connect((self.root, 53))
-        self.udp.sendall(dnsutils.getQueryMessage(self.domain))
-        data = self.udp.recv(8192)
+        while (not self.resolved):
+            self.udp.connect((self.root, 53))
+            self.udp.sendall(dnsutils.getQueryMessage(self.domain))
+            data = self.udp.recv(8192)
+            dnsMessage = dnsutils.parseDNSResponse(data)
+            print(SEPARATOR)
+            print('DNS server to query:', self.root)
+            print(dnsMessage)
+            if (len(dnsMessage.answers) > 0):
+                break
+            self.root = dnsMessage.additional.pop().rdata
         self.udp.close()
-        print('-' * SEPARATOR_COUNT)
-        print('DNS server to query:', self.root)
-        print(dnsutils.parseDNSResponse(data))
