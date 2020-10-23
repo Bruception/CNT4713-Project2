@@ -1,3 +1,5 @@
+from typing import Tuple, List
+
 QUERY_HEADER = b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
 
 class DNSHeader:
@@ -59,10 +61,10 @@ def formatRecords(records, buffer):
     for record in records:
         buffer.append(str(record))
 
-def getUShort(data, byte):
+def getUShort(data, byte) -> int:
     return (data[byte] << 8) + data[byte + 1]
 
-def getUInt(data, byte):
+def getUInt(data, byte) -> int:
     return (data[byte] << 32) + (data[byte + 1] << 16) + (data[byte + 2] << 8)  + data[byte + 3]
 
 def getQueryMessage(domain) -> bytes:
@@ -75,19 +77,19 @@ def getQueryMessage(domain) -> bytes:
     questionSectionBytes.extend(b'\x00\x00\x01\x00\x01')
     return bytes(questionSectionBytes)
 
-def parseResponseHeader(response):
+def parseResponseHeader(response) -> DNSHeader:
     data = bytearray(response)
     dnsHeader = DNSHeader(data)
     return dnsHeader
 
-def skipQuestionSection(data):
+def skipQuestionSection(data) -> int:
     currentByteIndex = 12
     while (data[currentByteIndex] != 0):
         labelLength = data[currentByteIndex]
         currentByteIndex += labelLength + 1
     return currentByteIndex + 5 # Start of the Answers sections
 
-def parseName(data, byte):
+def parseName(data, byte) -> Tuple[str, int]:
     currentByte = byte
     nameBuffer = []
     while (data[currentByte] != 0):
@@ -104,17 +106,17 @@ def parseName(data, byte):
         currentByte += labelLength + 1
     return ('.'.join(nameBuffer), currentByte)
 
-def parseIP(data, byte):
+def parseIP(data, byte) -> str:
     return '.'.join([str(data[byte + b]) for b in range(0, 4)])
 
-def recordIsAuthoritative(recordData):
+def recordIsAuthoritative(recordData) -> bool:
     return recordData['rtype'] == 1 and recordData['rclass'] == 1
 
-def recordIsAdditional(recordData):
+def recordIsAdditional(recordData) -> bool:
     return recordData['rtype'] == 2 and recordData['rclass'] == 1
 
 # Return list of resource records
-def parseResourceRecords(data, startByte, numRecords):
+def parseResourceRecords(data, startByte, numRecords) -> Tuple[List[ResourceRecord], int]:
     currentByte = startByte
     recordsParsed = 0
     records = []
@@ -141,7 +143,7 @@ def parseResourceRecords(data, startByte, numRecords):
     return (records, currentByte)
 
 # Return a DNSMessage
-def parseDNSResponse(data):
+def parseDNSResponse(data) -> DNSMessage:
     dnsMessage = DNSMessage()
     dnsMessage.setHeader(data)
     answers = dnsMessage.header.answers
