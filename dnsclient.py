@@ -21,8 +21,7 @@ class DNSClient:
                 print(f'Failed to resolve \'{self.domain}\'. Please try another root DNS server.')
         except (socket.timeout):
             print(SEPARATOR)
-            print(f'Socket timeout. Please try again.')
-            return
+            print('Socket timeout. Please try again.')
         finally:
             self.udp.close()
 
