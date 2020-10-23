@@ -109,6 +109,9 @@ def parseName(data, byte):
         currentByte += labelLength + 1
     return ('.'.join(nameBuffer), currentByte)
 
+def parseIP(data, byte):
+    return ['.'.join([str(data[byte + b]) for b in range(0, 4)])]
+
 # Return list of resource records
 def parseResourceRecords(data, startByte, numRecords):
     currentByte = startByte
@@ -122,8 +125,13 @@ def parseResourceRecords(data, startByte, numRecords):
         rclass = getUShort(data, currentByte + 2) # 2 bytes
         ttl = getUInt(data, currentByte + 4) # 4 bytes
         rdlength = getUShort(data, currentByte + 8) # 2 bytes
-        print(recordName, rtype, rclass, ttl, rdlength)
+        rdata = [0]
+        if (rtype == 1 and rclass == 1):
+            rdata = parseIP(data, currentByte + 10)
+        elif (rtype == 2 and rclass == 1):
+            rdata = parseName(data, currentByte + 10)
         currentByte += rdlength + 10
+        print(recordName, rtype, rclass, ttl, rdlength, rdata[0])
         recordsParsed += 1
     return currentByte
 
