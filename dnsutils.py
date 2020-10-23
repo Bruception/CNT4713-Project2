@@ -1,24 +1,3 @@
-responseCodeMap = {
-    0 : 'No error',
-    1 : 'Format error',
-    2 : 'Server failure',
-    3 : 'Name Error',
-    4 : 'Not Implemented',
-    5 : 'Refused',
-}
-
-qTypeMap = {
-    1 : 'A',
-    2 : 'NS',
-}
-
-qClassMap = {
-    1 : 'IN',
-    2 : 'CS',
-    3 : 'CH',
-    4 : 'HS',
-}
-
 QUERY_HEADER = b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
 
 class DNSHeader:
@@ -34,35 +13,51 @@ class DNSHeader:
         return '\n'.join([answers, nameServers, additionalRecords])
 
 class ResourceRecord:
-    def __init__(self):
-        self.name = None
-        self.type = None
-        self.rclass = None
-        self.ttl = None
-        self.rdlength = None
-        self.rdata = None
+    def __init__(self, recordData):
+        self.name = recordData['name']
+        self.rtype = recordData['rtype']
+        self.rclass = recordData['rclass']
+        self.ttl = recordData['ttl']
+        self.rdlength = recordData['rdlength']
+        self.rdata = recordData['rdata']
+
+    def __str__(self):
+        return f'\tName : {self.name}\tData : {self.rdata}'
 
 class DNSMessage:
     def __init__(self):
         self.header = None
-        self.answers = None
-        self.authority = None
-        self.additional = None
+        self.answers = []
+        self.authority = []
+        self.additional = []
 
     def setHeader(self, data):
         self.header = parseResponseHeader(data)
     
     def setAnswers(self, answers):
-        pass
+        self.answers = answers
 
     def setAuthority(self, authority):
-        pass
+        self.authority = authority
 
     def setAdditional(self, additional):
-        pass
+        self.additional = additional
 
     def __str__(self):
-        return str(self.header)
+        buffer = []
+        buffer.append('Reply received. Content overview:')
+        buffer.append(str(self.header))
+        buffer.append('Answers section:')
+        formatRecords(self.answers, buffer)
+        buffer.append('Authoritive Section:')
+        formatRecords(self.authority, buffer)
+        buffer.append('Additional Information Section:')
+        formatRecords(self.additional, buffer)
+        return '\n'.join(buffer)
+
+def formatRecords(records, buffer):
+    for record in records:
+        buffer.append(str(record))
 
 def getUShort(data, byte):
     return (data[byte] << 8) + data[byte + 1]
@@ -110,7 +105,13 @@ def parseName(data, byte):
     return ('.'.join(nameBuffer), currentByte)
 
 def parseIP(data, byte):
-    return ['.'.join([str(data[byte + b]) for b in range(0, 4)])]
+    return '.'.join([str(data[byte + b]) for b in range(0, 4)])
+
+def recordIsAuthoritative(recordData):
+    return recordData['rtype'] == 1 and recordData['rclass'] == 1
+
+def recordIsAdditional(recordData):
+    return recordData['rtype'] == 2 and recordData['rclass'] == 1
 
 # Return list of resource records
 def parseResourceRecords(data, startByte, numRecords):
@@ -119,21 +120,25 @@ def parseResourceRecords(data, startByte, numRecords):
     records = []
     while (recordsParsed < numRecords):
         info = parseName(data, currentByte)
-        recordName = info[0]
         currentByte = info[1]
-        rtype = getUShort(data, currentByte) # 2 bytes
-        rclass = getUShort(data, currentByte + 2) # 2 bytes
-        ttl = getUInt(data, currentByte + 4) # 4 bytes
-        rdlength = getUShort(data, currentByte + 8) # 2 bytes
-        rdata = [0]
-        if (rtype == 1 and rclass == 1):
-            rdata = parseIP(data, currentByte + 10)
-        elif (rtype == 2 and rclass == 1):
-            rdata = parseName(data, currentByte + 10)
-        currentByte += rdlength + 10
-        print(recordName, rtype, rclass, ttl, rdlength, rdata[0])
+        recordData = {
+            'name' : info[0],
+            'rtype' : getUShort(data, currentByte),
+            'rclass' : getUShort(data, currentByte + 2),
+            'ttl' : getUInt(data, currentByte + 4),
+            'rdlength' : getUShort(data, currentByte + 8),
+            'rdata' : None,
+        }
+        currentByte += 10
+        if (recordIsAuthoritative(recordData)):
+            recordData['rdata'] = parseIP(data, currentByte)
+        elif (recordIsAdditional(recordData)):
+            recordData['rdata'] = parseName(data, currentByte)[0]
+        currentByte += recordData['rdlength']
+        if (recordData['rdata']):
+            records.append(ResourceRecord(recordData))
         recordsParsed += 1
-    return currentByte
+    return (records, currentByte)
 
 # Return a DNSMessage
 def parseDNSResponse(data):
@@ -144,9 +149,14 @@ def parseDNSResponse(data):
     additionalRecords = dnsMessage.header.additionalRecords
     nextByte = skipQuestionSection(data)
     if (answers > 0):
-        nextByte = parseResourceRecords(data, nextByte, answers)
+        info = parseResourceRecords(data, nextByte, answers)
+        dnsMessage.setAnswers(info[0])
+        nextByte = info[1]
     if (nameServers > 0):
-        nextByte = parseResourceRecords(data, nextByte, nameServers)
+        info = parseResourceRecords(data, nextByte, nameServers)
+        dnsMessage.setAuthority(info[0])
+        nextByte = info[1]
     if (additionalRecords > 0):
-        nextByte = parseResourceRecords(data, nextByte, additionalRecords)
+        info = parseResourceRecords(data, nextByte, additionalRecords)
+        dnsMessage.setAdditional(info[0])
     return dnsMessage
