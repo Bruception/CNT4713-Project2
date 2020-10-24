@@ -4,7 +4,7 @@ import dnsutils
 SEPARATOR = '-' * 64
 
 class DNSClient:
-    def __init__(self, root, domain):
+    def __init__(self, domain, root):
         self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udp.settimeout(5)
         self.root = root
