@@ -44,4 +44,3 @@ def resolveHelper(root, query, udp, visited) -> bool:
             return True
     visited[root] = True
     return False
-
