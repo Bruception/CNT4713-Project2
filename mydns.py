@@ -1,4 +1,14 @@
 from dnsclient import DNSClient
+import sys
+from typing import Tuple
 
-myDNSClient = DNSClient('cs.fiu.edu', '202.12.27.33')
+def getDomainAndRootFromCLI() -> Tuple[str, str]:
+    if (len(sys.argv) != 3):
+        print('Usage: mydns', 'domain-name', 'root-dns-ip')
+        sys.exit()
+    domain, root = sys.argv[1], sys.argv[2]
+    return (domain, root)
+
+domain, root = getDomainAndRootFromCLI()
+myDNSClient = DNSClient(domain, root)
 myDNSClient.resolve()
