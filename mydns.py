@@ -1,4 +1,5 @@
-from dnsclient import DNSClient
+from dnsclient import DNSClient, commandLineArguments
 
-myDNSClient = DNSClient('cs.fiu.edu', '202.12.27.33')
+domain, root = commandLineArguments()
+myDNSClient = DNSClient(domain, root)
 myDNSClient.resolve()
