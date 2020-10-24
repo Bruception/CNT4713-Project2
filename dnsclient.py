@@ -1,6 +1,5 @@
 import socket
 import dnsutils
-import sys
 
 SEPARATOR = '-' * 64
 
