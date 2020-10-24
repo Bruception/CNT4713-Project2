@@ -1,7 +1,6 @@
 import socket
 import dnsutils
 import sys
-from typing import Tuple
 
 SEPARATOR = '-' * 64
 
@@ -46,8 +45,3 @@ def resolveHelper(root, query, udp, visited) -> bool:
     visited[root] = True
     return False
 
-def commandLineArguments() -> Tuple[str, str]:
-    if (len(sys.argv) != 3):
-        print('Invalid number of arguments given.')
-        sys.exit()
-    return (sys.argv[1], sys.argv[2])
