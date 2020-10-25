@@ -2,12 +2,10 @@ from typing import Tuple, List
 import random
 
 def generateTransactionID() -> bytearray:
-    correspondingByteValues = ([0] * 3) + [1] + ([0] * 6)
-    for i in range(2):
-        correspondingByteValues.insert(0, random.randint(0, 255))
-    return bytearray(correspondingByteValues)
+    correspondingByteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
+    correspondingByteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
+    return correspondingByteValues
 
-QUERY_HEADER = generateTransactionID()
 MAX_MESSAGE_SIZE = 512
 
 class DNSHeader:
@@ -78,7 +76,7 @@ def getUInt(data, byte) -> int:
 def getQueryMessage(domain) -> bytes:
     labels = domain.split('.')
     lengths = [len(label) for label in labels]
-    questionSectionBytes = bytearray(QUERY_HEADER)
+    questionSectionBytes = generateTransactionID()
     for label, length in zip(labels, lengths):
         questionSectionBytes.append(length)
         questionSectionBytes.extend(label.encode())
