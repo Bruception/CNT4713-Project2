@@ -58,7 +58,7 @@ class DNSMessage:
         formatRecords(self.additional, buffer)
         return '\n'.join(buffer)
     
-def generateTransactionID() -> bytearray:
+def getBeginningOfHeader() -> bytearray:
     correspondingByteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
     correspondingByteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
     return correspondingByteValues
