@@ -1,6 +1,14 @@
 from typing import Tuple, List
+import random
 
-QUERY_HEADER = b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
+def generateTransactionID() -> bytearray:
+    correspondingByteValues = ([0] * 3) + [1] + ([0] * 6)
+    for i in range(2):
+        correspondingByteValues.insert(0, random.randint(0, 255))
+    print(correspondingByteValues)
+    return bytearray(correspondingByteValues)
+
+QUERY_HEADER = generateTransactionID()
 MAX_MESSAGE_SIZE = 512
 
 class DNSHeader:
