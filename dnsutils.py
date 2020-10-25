@@ -1,11 +1,6 @@
 from typing import Tuple, List
 import random
 
-def generateTransactionID() -> bytearray:
-    correspondingByteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
-    correspondingByteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
-    return correspondingByteValues
-
 MAX_MESSAGE_SIZE = 512
 
 class DNSHeader:
@@ -62,6 +57,11 @@ class DNSMessage:
         buffer.append('Additional Information Section:')
         formatRecords(self.additional, buffer)
         return '\n'.join(buffer)
+    
+def generateTransactionID() -> bytearray:
+    correspondingByteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
+    correspondingByteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
+    return correspondingByteValues
 
 def formatRecords(records, buffer):
     for record in records:
