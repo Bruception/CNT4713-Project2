@@ -1,6 +1,6 @@
 from typing import Tuple, List
+import random
 
-QUERY_HEADER = b'\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
 MAX_MESSAGE_SIZE = 512
 
 class DNSHeader:
@@ -57,6 +57,11 @@ class DNSMessage:
         buffer.append('Additional Information Section:')
         formatRecords(self.additional, buffer)
         return '\n'.join(buffer)
+    
+def getBeginningOfHeader() -> bytearray:
+    correspondingByteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
+    correspondingByteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
+    return correspondingByteValues
 
 def formatRecords(records, buffer):
     for record in records:
@@ -71,7 +76,7 @@ def getUInt(data, byte) -> int:
 def getQueryMessage(domain) -> bytes:
     labels = domain.split('.')
     lengths = [len(label) for label in labels]
-    questionSectionBytes = bytearray(QUERY_HEADER)
+    questionSectionBytes = generateTransactionID()
     for label, length in zip(labels, lengths):
         questionSectionBytes.append(length)
         questionSectionBytes.extend(label.encode())
