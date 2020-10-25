@@ -5,7 +5,6 @@ def generateTransactionID() -> bytearray:
     correspondingByteValues = ([0] * 3) + [1] + ([0] * 6)
     for i in range(2):
         correspondingByteValues.insert(0, random.randint(0, 255))
-    print(correspondingByteValues)
     return bytearray(correspondingByteValues)
 
 QUERY_HEADER = generateTransactionID()
