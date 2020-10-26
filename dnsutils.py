@@ -128,10 +128,12 @@ def parseResourceRecords(data, startByte, numRecords) -> Tuple[List[ResourceReco
             'rdata' : None,
         }
         currentByte += 10
-        if (recordData['rtype'] == 1 and recordData['rclass'] == 1):
-            parseIP = '.'.join([str(data[currentByte + b]) for b in range(0, 4)])
-            recordData['rdata'] = parseIP
-        elif (recordData['rtype'] == 2 and recordData['rclass'] == 1):
+        recordIsAdditional = (recordData['rtype'] == 1 and recordData['rclass'] == 1)
+        recordIsAuthoritative = (recordData['rtype'] == 2 and recordData['rclass'] == 1)
+        if (recordIsAdditional):
+            parsedIP = '.'.join([str(data[currentByte + b]) for b in range(0, 4)])
+            recordData['rdata'] = parsedIP
+        elif (recordIsAuthoritative):
             recordData['rdata'] = parseName(data, currentByte)[0]
         currentByte += recordData['rdlength']
         if (recordData['rdata']):
@@ -148,13 +150,11 @@ def parseDNSResponse(data) -> DNSMessage:
     additionalRecords = dnsMessage.header.additionalRecords
     nextByte = skipQuestionSection(data)
     if (answers > 0):
-        records, currentByte = parseResourceRecords(data, nextByte, answers)
+        records, nextByte = parseResourceRecords(data, nextByte, answers)
         dnsMessage.setAnswers(records)
-        nextByte = currentByte
     if (nameServers > 0):
-        records, currentByte = parseResourceRecords(data, nextByte, nameServers)
+        records, nextByte = parseResourceRecords(data, nextByte, nameServers)
         dnsMessage.setAuthority(records)
-        nextByte = currentByte
     if (additionalRecords > 0):
         records, currentByte = parseResourceRecords(data, nextByte, additionalRecords)
         dnsMessage.setAdditional(records)
