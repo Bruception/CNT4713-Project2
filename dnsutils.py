@@ -3,17 +3,30 @@ import random
 
 MAX_MESSAGE_SIZE = 512
 
+RESPONSE_CODE_MAP = {
+    0: 'No error',
+    1: 'Format error',
+    2: 'Server failure',
+    3: 'Name error',
+    4: 'Not implemented',
+    5: 'Refused',
+}
+
 class DNSHeader:
     def __init__(self, data):
         self.answers = getUShort(data, 6)
         self.nameServers = getUShort(data, 8)
         self.additionalRecords = getUShort(data, 10)
+        self.isTruncated = ((data[2] & 0x02) == 0x02)
+        self.responseCode = data[3] & 0x0F
 
     def __str__(self):
+        responseMessage = f'\tResponse Code: {self.responseCode} - {RESPONSE_CODE_MAP[self.responseCode]}.'
+        truncated = '\tWarning: Message is truncated.' if self.isTruncated else ''
         answers = f'\t{self.answers} Answers.'
         nameServers = f'\t{self.nameServers} Intermediate Name Servers.'
         additionalRecords = f'\t{self.additionalRecords} Additional Information Records.'
-        return '\n'.join([answers, nameServers, additionalRecords])
+        return '\n'.join(filter(None, [responseMessage, truncated, answers, nameServers, additionalRecords]))
 
 class ResourceRecord:
     def __init__(self, recordData):
@@ -103,14 +116,15 @@ def parseName(data, byte) -> Tuple[str, int]:
         if ((labelLength & 0xC0) == 0xC0): # This is a pointer
             byteOffset = ((data[currentByte] & 0x3F) << 8) + data[currentByte + 1]
             nameBuffer.append(parseName(data, byteOffset)[0])
-            currentByte += 2
+            # Only increment by 1 because pointers do not end with the null octet
+            currentByte += 1
             break
         labelBuffer = []
         for i in range(0, labelLength):
             labelBuffer.append(chr(data[currentByte + i + 1]))
         nameBuffer.append(''.join(labelBuffer))
         currentByte += labelLength + 1
-    return ('.'.join(nameBuffer), currentByte)
+    return ('.'.join(nameBuffer), currentByte + 1)
 
 def recordIsAdditional(recordData):
     return recordData['rtype'] == 1 and recordData['rclass'] == 1
@@ -124,10 +138,9 @@ def parseResourceRecords(data, startByte, numRecords) -> Tuple[List[ResourceReco
     recordsParsed = 0
     records = []
     while (recordsParsed < numRecords):
-        info = parseName(data, currentByte)
-        currentByte = info[1]
+        name, currentByte = parseName(data, currentByte)
         recordData = {
-            'name' : info[0],
+            'name' : name,
             'rtype' : getUShort(data, currentByte),
             'rclass' : getUShort(data, currentByte + 2),
             'ttl' : getUInt(data, currentByte + 4),
