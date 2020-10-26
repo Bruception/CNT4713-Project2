@@ -27,6 +27,7 @@ class DNSClient:
 def resolveHelper(root, query, udp, visited) -> bool:
     if (root in visited):
         return False
+    visited[root] = True
     udp.connect((root, 53))
     udp.sendall(query)
     data = udp.recv(dnsutils.MAX_MESSAGE_SIZE)
@@ -40,5 +41,4 @@ def resolveHelper(root, query, udp, visited) -> bool:
         resolved = resolveHelper(server.rdata, query, udp, visited)
         if (resolved):
             return True
-    visited[root] = True
     return False
