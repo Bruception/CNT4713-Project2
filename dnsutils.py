@@ -113,7 +113,7 @@ def parseName(data, byte) -> Tuple[str, int]:
     return ('.'.join(nameBuffer), currentByte)
 
 def recordIsAdditional(recordData):
-    return recordData['rtype'] == 1 and recordData['rtype'] == 1
+    return recordData['rtype'] == 1 and recordData['rclass'] == 1
 
 def recordIsAuthoritative(recordData):
     return recordData['rtype'] == 2 and recordData['rclass'] == 1
