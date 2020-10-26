@@ -51,21 +51,20 @@ class DNSMessage:
         buffer.append('Reply received. Content overview:')
         buffer.append(str(self.header))
         buffer.append('Answers section:')
-        formatRecords(self.answers, buffer)
+        buffer.extend(formatRecords(self.answers))
         buffer.append('Authoritive Section:')
-        formatRecords(self.authority, buffer)
+        buffer.extend(formatRecords(self.authority))
         buffer.append('Additional Information Section:')
-        formatRecords(self.additional, buffer)
+        buffer.extend(formatRecords(self.additional))
         return '\n'.join(buffer)
 
 def getBeginningOfHeader() -> bytearray:
-    correspondingByteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
-    correspondingByteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
-    return correspondingByteValues
+    byteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
+    byteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
+    return byteValues
 
-def formatRecords(records, buffer):
-    for record in records:
-        buffer.append(str(record))
+def formatRecords(records):
+    return [str(record) for record in records]
 
 def getUShort(data, byte) -> int:
     return (data[byte] << 8) + data[byte + 1]
