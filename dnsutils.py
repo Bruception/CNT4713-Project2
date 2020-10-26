@@ -156,6 +156,6 @@ def parseDNSResponse(data) -> DNSMessage:
         records, nextByte = parseResourceRecords(data, nextByte, nameServers)
         dnsMessage.setAuthority(records)
     if (additionalRecords > 0):
-        records, currentByte = parseResourceRecords(data, nextByte, additionalRecords)
+        records, nextByte = parseResourceRecords(data, nextByte, additionalRecords)
         dnsMessage.setAdditional(records)
     return dnsMessage
