@@ -23,9 +23,10 @@ class ResourceRecord:
         self.ttl = recordData['ttl']
         self.rdlength = recordData['rdlength']
         self.rdata = recordData['rdata']
+        self.label = 'Name Server' if recordIsAuthoritative(recordData) else 'IP'
 
     def __str__(self):
-        return f'\tName : {self.name}\tData : {self.rdata}'
+        return f'\tName : {self.name}\t{self.label} : {self.rdata}'
 
 class DNSMessage:
     def __init__(self):
@@ -111,6 +112,12 @@ def parseName(data, byte) -> Tuple[str, int]:
         currentByte += labelLength + 1
     return ('.'.join(nameBuffer), currentByte)
 
+def recordIsAdditional(recordData):
+    return recordData['rtype'] == 1 and recordData['rtype'] == 1
+
+def recordIsAuthoritative(recordData):
+    return recordData['rtype'] == 2 and recordData['rclass'] == 1
+
 # Return list of resource records
 def parseResourceRecords(data, startByte, numRecords) -> Tuple[List[ResourceRecord], int]:
     currentByte = startByte
@@ -128,12 +135,10 @@ def parseResourceRecords(data, startByte, numRecords) -> Tuple[List[ResourceReco
             'rdata' : None,
         }
         currentByte += 10
-        recordIsAdditional = (recordData['rtype'] == 1 and recordData['rclass'] == 1)
-        recordIsAuthoritative = (recordData['rtype'] == 2 and recordData['rclass'] == 1)
-        if (recordIsAdditional):
+        if (recordIsAdditional(recordData)):
             parsedIP = '.'.join([str(data[currentByte + b]) for b in range(0, 4)])
             recordData['rdata'] = parsedIP
-        elif (recordIsAuthoritative):
+        elif (recordIsAuthoritative(recordData)):
             recordData['rdata'] = parseName(data, currentByte)[0]
         currentByte += recordData['rdlength']
         if (recordData['rdata']):

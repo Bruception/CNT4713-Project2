@@ -10,7 +10,6 @@ class DNSClient:
         self.root = root
         self.domain = domain
         self.domainQuery = dnsutils.getQueryMessage(domain)
-        self.resolved = False
 
     def resolve(self):
         try:
