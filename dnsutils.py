@@ -36,7 +36,7 @@ class DNSMessage:
 
     def setHeader(self, data):
         self.header = parseResponseHeader(data)
-    
+
     def setAnswers(self, answers):
         self.answers = answers
 
@@ -57,7 +57,7 @@ class DNSMessage:
         buffer.append('Additional Information Section:')
         formatRecords(self.additional, buffer)
         return '\n'.join(buffer)
-    
+
 def getBeginningOfHeader() -> bytearray:
     correspondingByteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
     correspondingByteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
@@ -76,7 +76,7 @@ def getUInt(data, byte) -> int:
 def getQueryMessage(domain) -> bytes:
     labels = domain.split('.')
     lengths = [len(label) for label in labels]
-    questionSectionBytes = generateTransactionID()
+    questionSectionBytes = getBeginningOfHeader()
     for label, length in zip(labels, lengths):
         questionSectionBytes.append(length)
         questionSectionBytes.extend(label.encode())
