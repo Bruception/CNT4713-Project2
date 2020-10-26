@@ -51,21 +51,20 @@ class DNSMessage:
         buffer.append('Reply received. Content overview:')
         buffer.append(str(self.header))
         buffer.append('Answers section:')
-        formatRecords(self.answers, buffer)
+        buffer.extend(formatRecords(self.answers))
         buffer.append('Authoritive Section:')
-        formatRecords(self.authority, buffer)
+        buffer.extend(formatRecords(self.authority))
         buffer.append('Additional Information Section:')
-        formatRecords(self.additional, buffer)
+        buffer.extend(formatRecords(self.additional))
         return '\n'.join(buffer)
 
 def getBeginningOfHeader() -> bytearray:
-    correspondingByteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
-    correspondingByteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
-    return correspondingByteValues
+    byteValues = bytearray([random.randint(0, 255), random.randint(0, 255)])
+    byteValues.extend(b'\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00')
+    return byteValues
 
-def formatRecords(records, buffer):
-    for record in records:
-        buffer.append(str(record))
+def formatRecords(records):
+    return [str(record) for record in records]
 
 def getUShort(data, byte) -> int:
     return (data[byte] << 8) + data[byte + 1]
@@ -76,12 +75,12 @@ def getUInt(data, byte) -> int:
 def getQueryMessage(domain) -> bytes:
     labels = domain.split('.')
     lengths = [len(label) for label in labels]
-    questionSectionBytes = getBeginningOfHeader()
+    messageBytes = getBeginningOfHeader()
     for label, length in zip(labels, lengths):
-        questionSectionBytes.append(length)
-        questionSectionBytes.extend(label.encode())
-    questionSectionBytes.extend(b'\x00\x00\x01\x00\x01')
-    return bytes(questionSectionBytes)
+        messageBytes.append(length)
+        messageBytes.extend(label.encode())
+    messageBytes.extend(b'\x00\x00\x01\x00\x01')
+    return bytes(messageBytes)
 
 def parseResponseHeader(response) -> DNSHeader:
     data = bytearray(response)
@@ -112,15 +111,6 @@ def parseName(data, byte) -> Tuple[str, int]:
         currentByte += labelLength + 1
     return ('.'.join(nameBuffer), currentByte)
 
-def parseIP(data, byte) -> str:
-    return '.'.join([str(data[byte + b]) for b in range(0, 4)])
-
-def recordIsAdditional(recordData) -> bool:
-    return recordData['rtype'] == 1 and recordData['rclass'] == 1
-
-def recordIsAuthoritative(recordData) -> bool:
-    return recordData['rtype'] == 2 and recordData['rclass'] == 1
-
 # Return list of resource records
 def parseResourceRecords(data, startByte, numRecords) -> Tuple[List[ResourceRecord], int]:
     currentByte = startByte
@@ -138,9 +128,12 @@ def parseResourceRecords(data, startByte, numRecords) -> Tuple[List[ResourceReco
             'rdata' : None,
         }
         currentByte += 10
-        if (recordIsAdditional(recordData)):
-            recordData['rdata'] = parseIP(data, currentByte)
-        elif (recordIsAuthoritative(recordData)):
+        recordIsAdditional = (recordData['rtype'] == 1 and recordData['rclass'] == 1)
+        recordIsAuthoritative = (recordData['rtype'] == 2 and recordData['rclass'] == 1)
+        if (recordIsAdditional):
+            parsedIP = '.'.join([str(data[currentByte + b]) for b in range(0, 4)])
+            recordData['rdata'] = parsedIP
+        elif (recordIsAuthoritative):
             recordData['rdata'] = parseName(data, currentByte)[0]
         currentByte += recordData['rdlength']
         if (recordData['rdata']):
@@ -157,14 +150,12 @@ def parseDNSResponse(data) -> DNSMessage:
     additionalRecords = dnsMessage.header.additionalRecords
     nextByte = skipQuestionSection(data)
     if (answers > 0):
-        info = parseResourceRecords(data, nextByte, answers)
-        dnsMessage.setAnswers(info[0])
-        nextByte = info[1]
+        records, nextByte = parseResourceRecords(data, nextByte, answers)
+        dnsMessage.setAnswers(records)
     if (nameServers > 0):
-        info = parseResourceRecords(data, nextByte, nameServers)
-        dnsMessage.setAuthority(info[0])
-        nextByte = info[1]
+        records, nextByte = parseResourceRecords(data, nextByte, nameServers)
+        dnsMessage.setAuthority(records)
     if (additionalRecords > 0):
-        info = parseResourceRecords(data, nextByte, additionalRecords)
-        dnsMessage.setAdditional(info[0])
+        records, nextByte = parseResourceRecords(data, nextByte, additionalRecords)
+        dnsMessage.setAdditional(records)
     return dnsMessage
