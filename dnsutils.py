@@ -75,12 +75,12 @@ def getUInt(data, byte) -> int:
 def getQueryMessage(domain) -> bytes:
     labels = domain.split('.')
     lengths = [len(label) for label in labels]
-    questionSectionBytes = getBeginningOfHeader()
+    messageBytes = getBeginningOfHeader()
     for label, length in zip(labels, lengths):
-        questionSectionBytes.append(length)
-        questionSectionBytes.extend(label.encode())
-    questionSectionBytes.extend(b'\x00\x00\x01\x00\x01')
-    return bytes(questionSectionBytes)
+        messageBytes.append(length)
+        messageBytes.extend(label.encode())
+    messageBytes.extend(b'\x00\x00\x01\x00\x01')
+    return bytes(messageBytes)
 
 def parseResponseHeader(response) -> DNSHeader:
     data = bytearray(response)
