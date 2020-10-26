@@ -148,14 +148,14 @@ def parseDNSResponse(data) -> DNSMessage:
     additionalRecords = dnsMessage.header.additionalRecords
     nextByte = skipQuestionSection(data)
     if (answers > 0):
-        info = parseResourceRecords(data, nextByte, answers)
-        dnsMessage.setAnswers(info[0])
-        nextByte = info[1]
+        records, currentByte = parseResourceRecords(data, nextByte, answers)
+        dnsMessage.setAnswers(records)
+        nextByte = currentByte
     if (nameServers > 0):
-        info = parseResourceRecords(data, nextByte, nameServers)
-        dnsMessage.setAuthority(info[0])
-        nextByte = info[1]
+        records, currentByte = parseResourceRecords(data, nextByte, nameServers)
+        dnsMessage.setAuthority(records)
+        nextByte = currentByte
     if (additionalRecords > 0):
-        info = parseResourceRecords(data, nextByte, additionalRecords)
-        dnsMessage.setAdditional(info[0])
+        records, currentByte = parseResourceRecords(data, nextByte, additionalRecords)
+        dnsMessage.setAdditional(records)
     return dnsMessage
