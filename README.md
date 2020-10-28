@@ -1,2 +1,0 @@
-# TODO
-- Handle socket errors

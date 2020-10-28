@@ -30,7 +30,7 @@ def resolveHelper(root, query, udp, visited) -> bool:
     visited[root] = True
     try:
         udp.connect((root, 53))
-    except Exception:
+    except (Exception):
         return False
     udp.sendall(query)
     data = udp.recv(dnsutils.MAX_MESSAGE_SIZE)
